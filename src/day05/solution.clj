@@ -1,6 +1,7 @@
 (ns day05.solution
   (:require [clojure.string :as str]
-            [day05.input]))
+            [day05.input]
+            [taoensso.tufte :as tufte]))
 
 (defn- test-input []
 "0,9 -> 5,9
@@ -44,13 +45,6 @@
         max-y (apply max (map line-max-y lines))]
     { :x max-x :y max-y }))
 
-(defn- draw-row [max-x _]
-  (str/join (concat (map (fn [_] ".") (range max-x)) "\n")))
-
-(defn- draw-board [lines]
-  (let [max-coords (lines-max-coords lines)]
-    (str/join (map #(draw-row (:x max-coords) %) (range (:y max-coords))))))
-
 (defn- line-dx [line]
   (- (:x (:to line)) (:x (:from line))))
 
@@ -59,13 +53,6 @@
 
 (defn- sign [x]
   (/ x (abs x)))
-
-(defn- line-increments [line]
-  (let [dx (line-dx line)
-        dy (line-dy line)]
-    (if (< (abs dx) (abs dy))
-      (range (:y (:from line)) (inc (:y (:to line))) (sign dy))
-      (range (:x (:from line)) (inc (:x (:to line))) (sign dx)))))
 
 (defn- line-type [line]
   (let [dx (line-dx line)
@@ -111,14 +98,28 @@
     :vertical   (line-coords-vertical   line)
     :diagonal   (line-coords-diagonal   line)))
 
-(defn- coords-overlaps [a b] [])
+(defn- init-result []
+  {:uniques  #{}
+   :overlaps #{}})
+
+(defn- each-coord [result coord]
+  (let [uniques  (:uniques result)
+        overlaps (:overlaps result)]
+    {:overlaps   (if (contains? uniques coord)
+                   (conj overlaps coord)
+                   overlaps)
+     :uniques    (conj uniques coord)}))
 
 (defn- each-line [result line]
-  (let [uniques   (:uniques result)
-        overlaps  (:overlaps result)
-        coords    (line-coords line)]
-    {:uniques    (set (concat uniques coords))
-     :overlaps  (set (concat overlaps (coords-overlaps coords uniques)))}))
+  (let [coords    (line-coords line)]
+    (reduce each-coord result coords)))
+
+(tufte/add-basic-println-handler! {})
+
+(defn solution [input]
+  (let [entries     (entries input)
+        lines       (lines entries)]
+    (count (:overlaps (reduce each-line (init-result) lines)))))
 
 (comment
   (let [h (line "0,0 -> 5,0")
@@ -126,10 +127,7 @@
         d (line "5,5 -> 0,0")]
     (line-coords d))
 
-  (map (fn [a b] [a b]) [1 2 3] [4 5 6])
-
-  (let [entries     (entries (day05.input/input))
-        lines       (lines entries)
-        line        (first lines)]
-    (reduce each-line lines))
+  (tufte/profile ; Profile any `p` forms called during body execution
+    {} ; Profiling options; we'll use the defaults for now
+    (tufte/p :solution (solution (day05.input/input))))
 )
