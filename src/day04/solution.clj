@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [shared.math :refer [transpose]]
             [day04.input]
-            [taoensso.tufte :as tufte]))
+            [taoensso.tufte :as tufte]
+            [clojure.stacktrace :as stacktrace]))
 
 (defn test-input []
 "7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
@@ -41,6 +42,11 @@
        (map #(filter not-empty %))
        (map #(map parse-int %))))
 
+(defn- boards [input]
+  (->> (str/split input #"\n\n")
+       (drop 1)
+       (map parse-board)))
+
 (defn- board-won-horizontal? [board]
   (->> (map str/join board)
        (filter #(= "XXXXX" %))
@@ -58,23 +64,50 @@
               (replace {number \X})
               (partition 5))]
     (if (board-won? board)
-      (reduced board)
-      (board))))
+      (reduced {:board board :winning-number number})
+      board)))
 
 (defn- solve-board [board numbers]
   (reduce board-on-draw board numbers))
 
-(defn- boards [input]
-  (->> (str/split input #"\n\n")
-       (drop 1)
-       (map parse-board)))
+(defn- solve-boards [boards numbers]
+  (map #(solve-board % numbers) boards))
 
-(defn- test-winning-board []
-  [[\X \X \X \X \X]])
+(defn- index-of [items item]
+  (.indexOf items item))
 
-(defn- test-winning-board-v []
-  (transpose (test-winning-board)))
+(defn- rounds-until-won [result numbers]
+  (inc (index-of numbers (:winning-number result))))
+
+(defn- enrich-rounds-until-won [result numbers]
+  (assoc result :rounds-until-won (rounds-until-won result numbers)))
+
+(defn- sort-results-by-rounds [results]
+  (sort-by #(:rounds-until-won %) results))
+
+(defn- score [result]
+  (->> (:board result)
+       (flatten)
+       (filter #(not (= \X %)))
+       (reduce +)
+       (* (:winning-number result))))
+
+(defn- results [input]
+  (let [numbers         (numbers input)
+        boards          (boards input)
+        results         (solve-boards boards numbers)
+        results         (map #(enrich-rounds-until-won % numbers) results)
+        results         (sort-results-by-rounds results)]
+    results))
+
+(defn part1 [input]
+  (score (first (results input))))
+
+(defn part2 [input]
+  (score (last (results input))))
 
 (comment
-  (solve-board (first (boards (test-input))) (numbers (test-input)))
+  (stacktrace/print-stack-trace *e)
+  (part1 day04.input/input)
+  (part2 day04.input/input)
 )
