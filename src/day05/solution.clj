@@ -24,40 +24,34 @@
         coords  { :x x :y y }]
     coords))
 
-(defn- entry-to-line [entry]
+(defn- line [entry]
   (let [[from to] (str/split entry #" -> ")
         line { :from (coords from) :to (coords to) }]
     line))
 
 (defn- lines [entries]
-  (map entry-to-line entries))
+  (map line entries))
 
-(defn- max-generic-coord [entry which]
-  (->> (str/split entry #" -> ")
-       (map #(str/split % #","))
-       (map which)
-       (map parse-int)
-       (sort-by <)
-       (last)))
+(defn- line-max-x [line]
+  (apply max [(:x (:from line)) (:x (:to line))]))
 
-(defn- max-x-coord [entry]
-  (max-generic-coord entry first))
+(defn- line-max-y [line]
+  (apply max [(:y (:from line)) (:y (:to line))]))
 
-(defn- max-y-coord [entry]
-  (max-generic-coord entry second))
+(defn lines-max-coords [lines]
+  (let [max-x (apply max (map line-max-x lines))
+        max-y (apply max (map line-max-y lines))]
+    { :x max-x :y max-y }))
 
-(defn max-x [entries]
-  (apply max (map max-x-coord entries)))
+(defn- draw-row [max-x _]
+  (str/join (concat (map (fn [_] ".") (range max-x)) "\n")))
 
-(defn- max-y [entries]
-  (apply max (map max-y-coord entries)))
-
-(defn- max-coords [entries]
-  { :x (max-x entries) :y (max-y entries) })
+(defn- draw-board [lines]
+  (let [max-coords (lines-max-coords lines)]
+    (str/join (map #(draw-row (:x max-coords) %) (range (:y max-coords))))))
 
 (comment
-  (max-x-coord "0,0 -> 4,4")
-  (let [entries   (entries (test-input))
-        lines     (lines entries)]
-    (max-coords entries))
+  (let [entries     (entries (test-input))
+        lines       (lines entries)]
+    (draw-board lines))
 )
