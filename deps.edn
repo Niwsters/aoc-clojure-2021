@@ -1,0 +1,7 @@
+{
+ :paths ["src"]
+ :deps {com.taoensso/tufte {:mvn/version "2.3.0-RC1"}}
+ :aliases {:nREPL
+          {:extra-deps
+            {nrepl/nrepl {:mvn/version "0.9.0"}}}}
+}
