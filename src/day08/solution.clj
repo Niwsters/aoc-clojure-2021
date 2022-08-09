@@ -15,6 +15,9 @@ bdfegc cbegaf gecbf dfcage bdacg ed bedf ced adcbefg gebcd | ed bcgafe cdgba cbg
 egadfb cdbfeg cegd fecab cgb gbdefca cg fgcdab egfdb bfceg | gbdfcae bgc cg cgb
 gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce")
 
+(defn- parse-int [s]
+  (Integer/parseInt s))
+
 (defn- entries [input]
   (str/split input #"\n"))
 
@@ -72,10 +75,10 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
 )
 
 (defn- id-1-4-7-8 [numbers]
-  {:one    (one numbers)
-   :four   (four numbers)
-   :seven  (seven numbers)
-   :eight  (eight numbers)
+  {1 (one numbers)
+   4 (four numbers)
+   7 (seven numbers)
+   8 (eight numbers)
    :numbers numbers})
 
 (defn- diff? [a b]
@@ -86,7 +89,7 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
   (contains? (set (vals identified)) number))
 
 (defn- id-n [identified comp-num should-diff has-count num-key]
-  (let [comp-num   (comp-num identified)
+  (let [comp-num   (get identified comp-num)
         result (find-by
                 #(and
                    (= (count %) has-count)
@@ -96,22 +99,29 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
     (assoc identified num-key result)))
 
 (defn- id-0 [identified]
-  (id-n identified :three true 6 :zero))
+  (id-n identified 3 true 6 0))
 
 (defn- id-2 [identified]
-  (id-n identified :six true 5 :two))
+  (id-n identified 6 true 5 2))
 
 (defn- id-3 [identified]
-  (id-n identified :one false 5 :three))
+  (id-n identified 1 false 5 3))
 
 (defn- id-5 [identified]
-  (id-n identified :six false 5 :five))
+  (id-n identified 6 false 5 5))
 
 (defn- id-6 [identified]
-  (id-n identified :one true 6 :six))
+  (id-n identified 1 true 6 6))
 
 (defn- id-9 [identified]
-  (id-n identified :three false 6 :nine))
+  (id-n identified 3 false 6 9))
+
+(defn- identified-sort [identified]
+  (reduce
+    (fn [identified pair]
+      (assoc identified (str/join (sort (second pair))) (first pair)))
+    {}
+    identified))
 
 (defn- identified [numbers]
   (->> (id-1-4-7-8 numbers)
@@ -120,10 +130,21 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
        (id-2)
        (id-5)
        (id-0)
-       (id-9)))
+       (id-9)
+       (#(dissoc % :numbers))
+       (identified-sort)))
 
 (defn- test-entry []
 "acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf")
+
+(defn- parse-number [identified number]
+  (get identified (str/join (set number))))
+
+(defn- parse-output [entry]
+  (let [numbers    (numbers entry)
+        identified (identified numbers)
+        output     (output entry)]
+    (str/join (map #(parse-number identified %) output))))
 
 (comment
   (part1 (day08.input/input))
@@ -140,11 +161,12 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
   (#(and (= (count %) 5) (not (diff? "ab" %))) "fbcad")
   (#(and (= (count %) 5) (not (diff? "ab" %))) "cdfbe")
 
+  (parse-output (first (entries (test-entry))))
+
   (let [entry   (first (entries (test-entry)))
         numbers (numbers entry)]
-    (dissoc (identified numbers) :numbers))
+    (identified numbers))
 
-  (let [entries (entries (test-input))
-        outputs (map output entries)
-        sevens  (map #(seven (numbers %)) entries)])
+  (let [entries (entries (day08.input/input))]
+    (reduce + (map parse-int (map parse-output entries))))
 )
