@@ -1,6 +1,7 @@
 (ns day09.part2
   (:require [clojure.string :as str]
-            [day09.input]))
+            [day09.input]
+            [clojure.stacktrace :as stacktrace]))
 
 (defn test-input []
 "2199943210
@@ -73,45 +74,47 @@
 
 ; CRITERIA FOR BASIN POINT:
 ; - Not 9
-; - Every surrounding point is either
-;    - basin point
-;    - higher height
-(defn- explore-basin
-  ([hdict low-point]
-   (let [[x y] (map parse-int (str/split low-point #":"))]
-     (explore-basin hdict #{low-point} (surrounding-points hdict x y) (get hdict low-point))))
-  ([hdict basin-points explore-queue current-point]
-    (if (= (count explore-queue) 0)
-      basin-points
-      (let [neighbours      (surrounding-points hdict current-point)
-            basin-point?    (and
-                              (< (:height current-point) 9)
-                              (every?
-                                #(or 
-                                   (< (:height current-point) (:height %))
-                                   (contains? basin-points (coord-str %))) neighbours))
-            basin-points    (if basin-point? (conj basin-points (coord-str current-point)) basin-points)
-            explore-queue   (if basin-point? ())]
-        (explore-basin hdict basin-points (drop 1 explore-queue) (first explore-queue))))))
+(defn- explore-basin  [hdict low-point-coords]
+  (let [low-point     (get hdict low-point-coords)
+        neighbors     (filter #(< (:height %) 9) (surrounding-points hdict low-point))]
+    (loop [queue          (set (map coord-str neighbors))
+           explored       #{low-point-coords}
+           current-point  low-point-coords]
+      (if (= (count queue) 0)
+        explored
+        (let [next-point  (first queue)
+              neighbors   (surrounding-points hdict (get hdict current-point))
+              queue       (disj queue next-point)
+              queue       (set (concat queue (map coord-str neighbors)))
+              queue       (set (filter #(not (contains? explored %)) queue))
+              queue       (set (filter #(< (:height (get hdict %)) 9) queue))
+              explored    (conj explored current-point)]
+          (recur
+            queue
+            explored
+            next-point))))))
 
 (defn- find-basin-points [low-points-coords hdict]
-  (explore-basin hdict "1:0"))
+  (map #(explore-basin hdict %) low-points-coords))
 
 (comment
   (surrounding-coords 1 0)
 
   (= {:a #{1 2} :b #{3 4}} {:a #{1 2} :b #{3 4}})
 
+  (first #{2 1 3})
+
   (part1 (day09.input/input))
 
-  (let [heightmap         (heightmap (test-input))
+  (stacktrace/print-stack-trace *e)
+
+  (let [heightmap         (heightmap (day09.input/input))
         hlist             (heightmap-list heightmap)
         hdict             (hdict hlist)
         low-points        (low-points hlist hdict)
         low-points-coords (set (map #(coord-str (:x %) (:y %)) low-points))
         basin-points      (find-basin-points low-points-coords hdict)]
-    (println low-points)
-    (map #(get hdict %) basin-points))
+    (reduce * (take-last 3 (sort (map #(+ 1 %) (map count basin-points))))))
 
   (heightmap (day09.input/input))
   (get (heightmap (test-input)) 1)
