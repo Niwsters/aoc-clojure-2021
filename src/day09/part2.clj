@@ -71,22 +71,31 @@
          (map #(+ 1 %))
          (reduce +))))
 
-(defn- is-basin-point [hdict basin-points cell]
-  (->> (surrounding-points hdict cell)
-       (every?
-         (fn [s-cell]
-           (or 
-             (contains? basin-points (coord-str s-cell))
-             (< (:height cell) (:height s-cell)))))))
+; CRITERIA FOR BASIN POINT:
+; - Not 9
+; - Every surrounding point is either
+;    - basin point
+;    - higher height
+(defn- explore-basin
+  ([hdict low-point]
+   (let [[x y] (map parse-int (str/split low-point #":"))]
+     (explore-basin hdict #{low-point} (surrounding-points hdict x y) (get hdict low-point))))
+  ([hdict basin-points explore-queue current-point]
+    (if (= (count explore-queue) 0)
+      basin-points
+      (let [neighbours      (surrounding-points hdict current-point)
+            basin-point?    (and
+                              (< (:height current-point) 9)
+                              (every?
+                                #(or 
+                                   (< (:height current-point) (:height %))
+                                   (contains? basin-points (coord-str %))) neighbours))
+            basin-points    (if basin-point? (conj basin-points (coord-str current-point)) basin-points)
+            explore-queue   (if basin-point? ())]
+        (explore-basin hdict basin-points (drop 1 explore-queue) (first explore-queue))))))
 
-(defn- find-basin-points [basin-points hlist]
-  (loop [basin-points     basin-points
-         old-basin-points #{}]
-      (if (not (= basin-points old-basin-points))
-        (recur
-          (set (map coord-str (filter #(is-basin-point hdict basin-points %) hlist)))
-          basin-points)
-        basin-points)))
+(defn- find-basin-points [low-points-coords hdict]
+  (explore-basin hdict "1:0"))
 
 (comment
   (surrounding-coords 1 0)
@@ -100,8 +109,9 @@
         hdict             (hdict hlist)
         low-points        (low-points hlist hdict)
         low-points-coords (set (map #(coord-str (:x %) (:y %)) low-points))
-        basin-points      (find-basin-points low-points-coords hlist)]
-    (->> (map #(get hdict %) basin-points)))
+        basin-points      (find-basin-points low-points-coords hdict)]
+    (println low-points)
+    (map #(get hdict %) basin-points))
 
   (heightmap (day09.input/input))
   (get (heightmap (test-input)) 1)
