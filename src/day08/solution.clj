@@ -47,7 +47,8 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
 
 (defn- numbers [entry]
   (let [numbers (str/split entry #" ")
-        numbers (filter #(not (= "|" %)) numbers)]
+        numbers (filter #(not (= "|" %)) numbers)
+        numbers (map sort numbers)]
     numbers))
 
 (defn- identify-by-length [numbers length]
@@ -72,6 +73,16 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
    5 5  ; 5 has count 5 and no diff from 6 (1)
    6 6  ; 6 has count 6 and diff from 1 (0)
    9 6] ; 9 has count 6 and no diff from 3 (2)
+
+
+   3 5  ; 3 has count 5 and no diff from 1 (0)
+   6 6  ; 6 has count 6 and diff from 1 (0)
+
+   2 5  ; 2 has count 5 and diff from 6 (1)
+   5 5  ; 5 has count 5 and no diff from 6 (1)
+
+  [0 6  ; 0 has count 6 and diff from 3 (2) and not yet found
+   9 6] ; 9 has count 6 and no diff from 3 (2)
 )
 
 (defn- id-1-4-7-8 [numbers]
@@ -95,8 +106,9 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
                    (= (count %) has-count)
                    (if should-diff (diff? comp-num %) (not (diff? comp-num %)))
                    (not (identified? identified %)))
-                (:numbers identified))]
-    (assoc identified num-key result)))
+                (:numbers identified))
+        identified (assoc identified num-key result)]
+    identified))
 
 (defn- id-0 [identified]
   (id-n identified 3 true 6 0))
@@ -117,20 +129,21 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
   (id-n identified 3 false 6 9))
 
 (defn- identified-sort [identified]
-  (reduce
+  (let [result (reduce
     (fn [identified pair]
-      (assoc identified (str/join (sort (second pair))) (first pair)))
+      (assoc identified (apply str (sort (second pair))) (first pair)))
     {}
-    identified))
+    identified)]
+    result))
 
 (defn- identified [numbers]
   (->> (id-1-4-7-8 numbers)
-       (id-3)
        (id-6)
-       (id-2)
+       (id-3)
        (id-5)
-       (id-0)
+       (id-2)
        (id-9)
+       (id-0)
        (#(dissoc % :numbers))
        (identified-sort)))
 
@@ -143,11 +156,23 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
 (defn- parse-output [entry]
   (let [numbers    (numbers entry)
         identified (identified numbers)
-        output     (output entry)]
-    (str/join (map #(parse-number identified %) output))))
+        output     (output entry)
+        output     (map #(parse-number identified %) output)]
+    (apply str output)))
+
+; acfde cgeabd cag gfcb adgfc fdgbae fbdag cgefabd dgbacf cg | fgadc dcbgae ebdagf gbacfed
+; cg =      1
+; gfcb =    4
+; cag =     7
+; cgefabd = 8
+; adgfc   = 3
+; fdgbae  = 6
+; So the error is not in the method, but in the code... .__.
 
 (comment
   (part1 (day08.input/input))
+
+  (diff? "cg" "adgfc")
 
   (contains? (set "abc") \a)
   (diff? "abc" "ab")
@@ -162,6 +187,8 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
   (#(and (= (count %) 5) (not (diff? "ab" %))) "cdfbe")
 
   (parse-output (first (entries (test-entry))))
+
+  (parse-output (first (entries "acfde cgeabd cag gfcb adgfc fdgbae fbdag cgefabd dgbacf cg | fgadc dcbgae ebdagf gbacfed")))
 
   (let [entry   (first (entries (test-entry)))
         numbers (numbers entry)]
