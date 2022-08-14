@@ -87,6 +87,28 @@
          (count)
          (+ (:energy octopus)))))
 
+(defn- flashed-octopi [octopi]
+  (->> (map #(:energy %) octopi)
+       (filter #(> % 9))
+       (count)))
+
+(defn- octopi-get-flashed [octopi]
+  (loop [octopi     octopi
+         old-octopi []
+         iterations 0]
+    (println (flashed-octopi octopi))
+    (if (or
+          (> iterations 10)
+          (= (flashed-octopi octopi)
+             (flashed-octopi old-octopi)))
+      octopi
+      (let [odict         (odict octopi)
+            new-octopi    (map #(octopus-get-flashed odict %) octopi)]
+        (recur
+          new-octopi
+          octopi
+          (inc iterations))))))
+
 (defn- octopus-flash [octopus]
   (assoc
     octopus
@@ -97,7 +119,7 @@
 
 (defn- step [octopi]
   (let [octopi  (map octopus-inc octopi)
-        octopi  (map #(octopus-get-flashed (odict octopi) %) octopi)
+        octopi  (octopi-get-flashed octopi)
         octopi  (map octopus-flash octopi)]
     octopi))
 
@@ -126,11 +148,39 @@
          (map #(apply str %))
          (map #(str % "\n"))
          (flatten)
-         (str/join))))
+         (str/join)
+         (str/trim))))
+
+(def test-expected-step-1
+"6594254334
+3856965822
+6375667284
+7252447257
+7468496589
+5278635756
+3287952832
+7993992245
+5957959665
+6394862637")
+
+(def test-expected-step-2
+"8807476555
+5089087054
+8597889608
+8485769600
+8700908800
+6600088989
+6800005943
+0000007456
+9000000876
+8700006848")
 
 (comment
   (unstr-coord "0:1")
   (octopi test-input)
+
+  (= (step (step (octopi test-input-2)))
+     (octopi test-expected-step-2))
 
   (stacktrace/print-stack-trace *e)
 
