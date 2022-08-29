@@ -73,9 +73,6 @@ QR-bj")
   (let [paths (str/split input #"\n")]
     paths))
 
-(defn- includes? [item coll]
-  (not (nil? (some #(= item %) coll))))
-
 (defn- all-lowercase? [s]
   (= s (str/lower-case s)))
 
