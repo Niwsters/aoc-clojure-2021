@@ -106,12 +106,24 @@ QR-bj")
       paths)))
 
 (defn- possibilities [paths traversed]
-  (let [pbs       (get paths (last traversed))
-        visited   (set traversed)
-        uppercase (set (filter all-uppercase? pbs))
-        pbs       (set/difference pbs visited)
-        pbs       (set/union pbs uppercase)]
-    pbs))
+  (if (= (last traversed) "end")
+    []
+    (let [pbs       (get paths (last traversed))
+          uppercase (filter all-uppercase? pbs)
+          freqs     (frequencies (filter all-lowercase? traversed))
+          did-visit-small-cave-twice? (not (nil? (seq (filter #(> % 1) (vals freqs)))))
+          pbs       (if did-visit-small-cave-twice?
+                      (filter #(< (get freqs % 0) 1) pbs)
+                      pbs)
+          pbs       (filter #(not (= "start" %)) pbs)
+          pbs       (concat pbs uppercase)]
+      pbs)))
+
+(comment
+  (let [paths   (paths test-input)
+        paths   (pb-dict paths)]
+    (possibilities paths ["start" "A" "b" "A" "b" "A" "c" "A"]))
+)
 
 (defn- traverse [paths traversed]
   (map #(conj traversed %) (possibilities paths traversed)))
@@ -133,13 +145,13 @@ QR-bj")
         (recur all-traversed queue))
       all-traversed)))
 
-(defn- count-ends [all-traversed]
-  (count (filter #(= (last %) "end") all-traversed)))
+(defn- ends [all-traversed]
+  (filter #(= (last %) "end") all-traversed))
 
 (defn solution [input]
   (let [paths   (paths input)
         paths   (pb-dict paths)]
-    (count-ends (traverse-all paths))))
+    (count (ends (traverse-all paths)))))
 
 (tufte/add-basic-println-handler! {})
 
@@ -147,7 +159,7 @@ QR-bj")
   (paths test-input)
   (let [paths   (paths test-input)
         paths   (pb-dict paths)]
-    (traverse paths ["start"]))
+    (possibilities paths ["start" "A" "b" "A"]))
     ;(time
     ;  (count-ends (traverse-all paths))))
 
