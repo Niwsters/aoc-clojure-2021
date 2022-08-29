@@ -1,6 +1,7 @@
 (ns day12.solution
   (:require [clojure.string :as str]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [taoensso.tufte :as tufte]))
 
 (def test-input
 "start-A
@@ -85,8 +86,10 @@ QR-bj")
   (all-lowercase? "abC")
 )
 
-(defn- end [traversed]
-  (last (str/split traversed #"-")))
+(defn- queue
+  ([] (clojure.lang.PersistentQueue/EMPTY))
+  ([coll]
+    (reduce conj clojure.lang.PersistentQueue/EMPTY coll)))
 
 (defn- pb-dict [paths]
   (let [paths (map #(str/split % #"-") paths)]
@@ -103,18 +106,6 @@ QR-bj")
       paths)))
 
 (defn- possibilities [paths traversed]
-  (let [location (end traversed)
-        poss     (map #(str/split % #"-") paths)
-        poss     (filter #(includes? location %) poss)
-        poss     (map (fn [split] (filter #(not (= location %)) split)) poss)
-        poss     (flatten poss)
-        visited  (set (str/split traversed #"-"))
-        poss     (filter #(or
-                            (not (includes? % visited))
-                            (all-uppercase? %)) poss)]
-    poss))
-
-(defn- possibilities-2 [paths traversed]
   (let [pbs       (get paths (last traversed))
         visited   (set traversed)
         uppercase (set (filter all-uppercase? pbs))
@@ -123,36 +114,44 @@ QR-bj")
     pbs))
 
 (defn- traverse [paths traversed]
-  (map #(conj traversed %) (possibilities-2 paths traversed)))
+  (map #(conj traversed %) (possibilities paths traversed)))
 
 (defn- traverse-step [paths all-traversed queue]
-  (let [new-traversed (traverse paths (first queue))
+  (let [new-traversed (traverse paths (peek queue))
         new-traversed (set new-traversed)
         all-traversed (set/union all-traversed new-traversed)
-        queue         (drop 1 queue)
-        queue         (concat queue new-traversed)
-        queue         (filter #(not (= "end" (last %))) queue)]
+        new-traversed (filter #(not (= "end" (last %))) new-traversed)
+        queue         (pop queue)
+        queue         (reduce conj queue new-traversed)]
     [all-traversed queue]))
 
 (defn- traverse-all [paths]
-  (let []
-    (loop [all-traversed (set [["start"]])
-           queue         [["start"]]]
-      (if (> (count queue) 0)
-        (let [[all-traversed queue] (traverse-step paths all-traversed queue)]
-          (recur all-traversed queue))
-        all-traversed))))
+  (loop [all-traversed (set [["start"]])
+         queue         (queue [["start"]])]
+    (if (not-empty queue)
+      (let [[all-traversed queue] (traverse-step paths all-traversed queue)]
+        (recur all-traversed queue))
+      all-traversed)))
 
 (defn- count-ends [all-traversed]
   (count (filter #(= (last %) "end") all-traversed)))
 
-(comment
-  (paths test-input)
+(defn solution [input]
   (let [paths   (paths input)
         paths   (pb-dict paths)]
-    (time
-      (count-ends (traverse-all paths))))
+    (count-ends (traverse-all paths))))
 
-  (some #(= "c" %) ["a" "b"])
-  (end "start-A-b")
+(tufte/add-basic-println-handler! {})
+
+(comment
+  (paths test-input)
+  (let [paths   (paths test-input)
+        paths   (pb-dict paths)]
+    (traverse paths ["start"]))
+    ;(time
+    ;  (count-ends (traverse-all paths))))
+
+  (tufte/profile ; Profile any `p` forms called during body execution
+    {} ; Profiling options; we'll use the defaults for now
+    (tufte/p :solution (solution input)))
 )
