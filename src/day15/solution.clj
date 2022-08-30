@@ -27,6 +27,52 @@
   (->> (str/split input #"\n")
        (count)))
 
+(defn- increase [n amount]
+  (let [n (+ n amount)
+        n (mod n 9)
+        n (if (= 0 n) 9 n)]
+    n))
+
+(defn- input-block [input amount]
+  (->> (str/split input #"\n")
+       (map #(str/split % #""))
+       (flatten)
+       (map util/parse-int)
+       (map #(increase % amount))
+       (partition (width input))))
+
+(def small-test-input
+"1111
+1111
+1111
+1111")
+
+(defn- zero [_] 0)
+
+(defn- map-block [input]
+  (let [width (width input)
+        height (height input)
+        arr (->> (map (fn [_] (map zero (range width))) (range height))
+                 (map vec)
+                 (vec))
+        block (input-block input 0)]
+    (reduce
+      (fn [arr y]
+        (reduce
+          (fn [arr x]
+            (assoc-in arr [y x] (nth (nth block y) x)))
+          arr 
+          (range 4)))
+      arr
+      (range 4))))
+
+(comment
+  (input-block small-test-input 4)
+
+  (assoc-in [[0 1] [2 3]] [0 1] 7)
+  (map-block small-test-input)
+)
+
 (defn- neighbors [input]
   (let [width  (width input)
         height (height input)]
@@ -50,6 +96,65 @@
              row)))
        (apply concat)
        (into {})))
+
+(defn- limit-n [n]
+  (let [n (mod n 9)
+        n (if (= 0 n) 9 n)]
+    n))
+
+(defn- expand-dict-x [dict y-inc n-inc]
+  (let [width (inc (apply max (map first (keys dict))))]
+    (reduce-kv
+      (fn [dict [x y] n]
+        (reduce
+          (fn [dict r]
+            (assoc dict [(+ x (* r width)) (+ y y-inc)] (limit-n (+ n r n-inc))))
+          dict
+          (range 5)))
+      {}
+      dict)))
+
+;          (assoc [(+ x 0)   (+ y y-inc)] (limit-n (+ n 0 n-inc)))
+;          (assoc [(+ x 4)   (+ y y-inc)] (limit-n (+ n 1 n-inc)))
+;          (assoc [(+ x 8)   (+ y y-inc)] (limit-n (+ n 2 n-inc)))
+;          (assoc [(+ x 12)  (+ y y-inc)] (limit-n (+ n 3 n-inc)))
+;          (assoc [(+ x 16)  (+ y y-inc)] (limit-n (+ n 4 n-inc)))
+
+(defn- expand-dict [dict]
+  (let [height (inc (apply max (map second (keys dict))))]
+    (apply merge
+      (map
+        (fn [r]
+          (expand-dict-x dict (* r height) r))
+        (range 5)))))
+
+;    (expand-dict-x dict 0 0)
+;    (expand-dict-x dict 4 1)
+;    (expand-dict-x dict 8 2)
+;    (expand-dict-x dict 12 3)
+;    (expand-dict-x dict 16 4)
+
+(defn- to-2d-array [dict]
+  (let [width       (inc (apply max (map first (keys dict))))
+        height      (inc (apply max (map second (keys dict))))
+        empty-cave  (vec (repeat height (vec (repeat width 0))))]
+    (reduce-kv
+      (fn [cave [x y] n]
+        (assoc-in cave [y x] n))
+      empty-cave
+      dict)))
+
+(defn- to-string [array-2d]
+  (->> (map str/join array-2d)
+       (str/join "\n")))
+
+(defn- expand-input [input]
+  (to-string (to-2d-array (expand-dict (dict input)))))
+
+(comment
+  (expand-dict (dict test-input))
+  (println (expand-input small-test-input))
+)
 
 (defn- distances [dict]
   (let [dist (keys dict)
@@ -107,10 +212,10 @@
                               alts)]
             (recur queue dist)))))))
 
-(defn- solution [input goal]
+(defn- solution [input]
   (let [width       (width input)
         height      (height input)
-        ;goal        [(- width 1) (- height 1)]
+        goal        [(- width 1) (- height 1)]
         dist        (dijkstras input goal)]
     (distance dist goal)))
 
@@ -119,12 +224,17 @@
 (comment
   (stacktrace/print-stack-trace *e)
 
+  (repeat 5 (repeat 5 0))
+
   (let [dict      (dict test-input)
         dist      (distances dict)
         queue     (queue dist)]
     queue)
 
+  ; part 1
   (tufte/profile ; Profile any `p` forms called during body execution
     {} ; Profiling options; we'll use the defaults for now
-    (tufte/p :solution (solution day15.input/input [99 99])))
+    (tufte/p :solution (solution (expand-input day15.input/input))))
+
+  ; part 2
 )
