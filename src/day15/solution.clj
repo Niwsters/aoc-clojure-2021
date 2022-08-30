@@ -1,7 +1,10 @@
 (ns day15.solution
   (:require [clojure.string :as str]
             [shared.util :as util]
-            [day15.input]))
+            [day15.input]
+            [taoensso.tufte :as tufte]
+            [clojure.stacktrace :as stacktrace]
+            [clojure.data.priority-map :as pm]))
 
 (def test-input
 "1163751742
@@ -50,42 +53,78 @@
 
 (defn- distances [dict]
   (let [dist (keys dict)
-        dist (map (fn [v] [v ##Inf]) dist)
+        dist (map #(into [% ##Inf]) dist)
         dist (into {} dist)
         dist (assoc dist [0 0] 0)]
     dist))
 
-(defn- dijkstras [input]
+(defn- distance [dist v]
+  (get dist v ##Inf))
+
+(defn- u [dist queue]
+  (let [dist (tufte/p :dist (sort-by val dist))]
+    (reduce
+      (fn [_ [v _]]
+        (if (contains? queue v)
+          (reduced v)
+          nil))
+      nil
+      dist)))
+
+(defn- queue [dist]
+  (into (pm/priority-map) (seq dist)))
+
+(defn- queue-set-weight [queue u weight]
+  (assoc queue u weight))
+
+(defn- queue-remove [queue u]
+  (dissoc queue u))
+
+(defn- queue-min [queue]
+  (peek queue))
+
+(defn- dijkstras [input goal]
   (let [dict      (dict input)
-        prev      {}
-        queue     (keys dict)
         dist      (distances dict)
+        queue     (queue dist)
         neighbors (neighbors input)]
     (loop [queue queue
-           dist  dist
-           prev  prev]
-      (if (empty? queue)
-        [dist prev]
-        (let [queue       (sort-by #(get dist %) queue)
-              u           (first queue)
-              [ux uy]     u
-              queue       (drop 1 queue)
-              neighbors   (neighbors ux uy)
-              neighbors   (filter #(util/includes? % queue) neighbors)
-              alts        (map #(into [% (+ (get dict %) (get dist u))]) neighbors)
-              [dist prev] (reduce
-                            (fn [[dist prev] [v alt]]
-                              (if (< alt (get dist v))
-                                [(assoc dist v alt) (assoc prev v u)]
-                                [dist prev]))
-                            [dist prev]
-                            alts)]
-          (recur queue dist prev))))))
+           dist  dist]
+      (let [[u _]       (tufte/p :queue-min (queue-min queue))
+            [ux uy]     u
+            queue       (tufte/p :queue-remove (queue-remove queue u))]
+        (if (or (empty? queue) (= u goal))
+          dist
+          (let [neighbors   (neighbors ux uy)
+                neighbors   (filter #(contains? queue %) neighbors)
+                alts        (map #(into [% (+ (get dict %) (distance dist u))]) neighbors)
+                [dist queue] (reduce
+                              (fn [[dist queue] [v alt]]
+                                (if (< alt (distance dist v))
+                                  [(assoc dist v alt) (queue-set-weight queue v alt)]
+                                  [dist queue]))
+                              [dist queue]
+                              alts)]
+            (recur queue dist)))))))
+
+(defn- solution [input goal]
+  (let [width       (width input)
+        height      (height input)
+        ;goal        [(- width 1) (- height 1)]
+        dist        (dijkstras input goal)]
+    (distance dist goal)))
+
+(tufte/add-basic-println-handler! {})
 
 (comment
-  (let [input       day15.input/input 
-        [dist _]    (dijkstras input)
-        width       (width input)
-        height      (height input)]
-    (get dist [(- width 1) (- height 1)]))
+  (stacktrace/print-stack-trace *e)
+
+  (let [dict      (dict test-input)
+        dist      (distances dict)
+        queue     (queue dist)]
+    queue)
+
+  (tufte/profile ; Profile any `p` forms called during body execution
+    {} ; Profiling options; we'll use the defaults for now
+    (tufte/p :solution (solution day15.input/input [99 99])))
 )
