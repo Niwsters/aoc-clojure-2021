@@ -127,10 +127,74 @@ F = 1111")
        (map :version)
        (reduce +)))
 
-(defn- part1 [input]
+(defn- parse [input]
   (let [binary             (line-to-binary input)
-        [packet remainder] (parse-line binary)]
-    (version-sum packet)))
+        [packet _remainder] (parse-line binary)]
+    packet))
+
+(defn- part1 [input]
+  (version-sum (parse input)))
+
+(declare value)
+
+(defn- sum-value [packet]
+  (->> (:sub-packets packet)
+       (map value)
+       (reduce +)))
+
+(defn- product-value [packet]
+  (->> (:sub-packets packet)
+       (map value)
+       (reduce *)))
+
+(defn- min-value [packet]
+  (->> (:sub-packets packet)
+       (map value)
+       (reduce min)))
+
+(defn- max-value [packet]
+  (->> (:sub-packets packet)
+       (map value)
+       (reduce max)))
+
+(defn- greater-than [packet]
+  (let [[p1 p2] (:sub-packets packet)
+        p1      (value p1)
+        p2      (value p2)]
+    (if (> p1 p2)
+      1
+      0)))
+
+(defn- less-than [packet]
+  (let [[p1 p2] (:sub-packets packet)
+        p1      (value p1)
+        p2      (value p2)]
+    (if (< p1 p2)
+      1
+      0)))
+
+(defn- equal-to [packet]
+  (let [[p1 p2] (:sub-packets packet)
+        p1      (value p1)
+        p2      (value p2)]
+    (if (= p1 p2)
+      1
+      0)))
+
+(defn- value [packet]
+  (case (:type-id packet)
+    0 (sum-value packet)
+    1 (product-value packet)
+    2 (min-value packet)
+    3 (max-value packet)
+    4 (:value packet)
+    5 (greater-than packet)
+    6 (less-than packet)
+    7 (equal-to packet)))
+
+(defn- part2 [input]
+  (let [packet (parse input)]
+    (value packet)))
 
 (comment
   (next (line-to-binary "D2FE28") 3)
@@ -143,4 +207,13 @@ F = 1111")
   (part1 "620080001611562C8802118E34")
   (part1 day16.input/input)
   (parse-line (line-to-binary day16.input/input))
+  (part2 "C200B40A82")
+  (part2 "04005AC33890")
+  (part2 "880086C3E88112")
+  (part2 "CE00C43D881120")
+  (part2 "D8005AC2A8F0")
+  (part2 "F600BC2D8F")
+  (part2 "9C005AC2F8F0")
+  (part2 "9C0141080250320F1802104A08")
+  (part2 day16.input/input)
 )
