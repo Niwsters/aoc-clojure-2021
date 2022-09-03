@@ -45,7 +45,7 @@ F = 1111")
         version        (decimal version)
         type-id        (decimal type-id)
         packet         {:version version :type-id type-id}]
-    [rest packet]))
+    [packet rest]))
 
 (defn- literal-value [packet rest]
   (loop [packet packet
@@ -55,23 +55,39 @@ F = 1111")
           packet              (assoc packet :value (str (:value packet) value))]
       (if (= last-value? "1")
         (recur packet rest)
-        [rest (assoc packet :value (decimal (:value packet)))]))))
+        [(assoc packet :value (decimal (:value packet))) rest]))))
 
-(defn- parse-line [line])
+(declare parse-line)
+
+(defn- packet-add [packet sub-packet]
+  (assoc packet :sub-packets (conj (:sub-packets packet) sub-packet)))
+
+(defn- length-15-sub-packet [packet rest]
+  (let [[sub-packet rest] (parse-line rest)
+        packet      (packet-add packet sub-packet)]
+    [packet rest]))
 
 (defn- sub-packets-length-15 [packet rest]
-  (let [[packets-length rest] (digest rest 15)
-        packets-length        (decimal packets-length)
-        [rest sub-packet]     (packet-create rest)
-        [rest sub-packet]     (literal-value sub-packet rest)
-        packet                (assoc packet :sub-packets [sub-packet])]
-    [rest packet]))
+  (let [[packets-length rest]  (digest rest 15)
+        packets-length         (decimal packets-length)
+        [sub-packet-rest
+         rest]      (digest rest packets-length)]
+    (loop [packet packet
+           sub-packet-rest sub-packet-rest]
+      (if (= (count sub-packet-rest) 0)
+        [packet rest]
+        (let [[packet
+               sub-packet-rest] (length-15-sub-packet packet sub-packet-rest)]
+          (recur packet sub-packet-rest))))))
+
+(defn- sub-packets-by-count [packet rest])
 
 (defn- operator [packet rest]
   (let [[length-id rest] (digest rest 1)
         packet           (assoc packet :length-id length-id)]
     (case length-id
-      "0" (sub-packets-length-15 packet rest))))
+      "0" (sub-packets-length-15 packet rest)
+      "1" (sub-packets-by-count  packet rest))))
 
 (defn- parse-by-type [packet rest]
   (case (:type-id packet)
@@ -79,9 +95,9 @@ F = 1111")
     (operator packet rest)))
 
 (defn- parse-line [line]
-  (let [[rest packet]        (packet-create line)
-        [rest packet]        (parse-by-type packet rest)]
-    [rest packet]))
+  (let [[packet rest]        (packet-create line)
+        [packet rest]        (parse-by-type packet rest)]
+    [packet rest]))
 
 (comment
   (next (line-to-binary "D2FE28") 3)
