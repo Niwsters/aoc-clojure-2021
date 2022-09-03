@@ -1,5 +1,7 @@
 (ns day16.solution
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [day16.input]
+            [shared.util :as util]))
 
 
 (def hex-to-binary-rules
@@ -80,7 +82,17 @@ F = 1111")
                sub-packet-rest] (length-15-sub-packet packet sub-packet-rest)]
           (recur packet sub-packet-rest))))))
 
-(defn- sub-packets-by-count [packet rest])
+(defn- sub-packets-by-count [packet rest]
+  (let [[packet-count rest] (digest rest 11)
+        packet-count        (decimal packet-count)]
+    (loop [i 0
+           packet packet
+           rest rest]
+      (if (= i packet-count)
+        [packet rest]
+        (let [[sub-packet rest] (parse-line rest)
+              packet            (packet-add packet sub-packet)]
+          (recur (inc i) packet rest))))))
 
 (defn- operator [packet rest]
   (let [[length-id rest] (digest rest 1)
@@ -99,8 +111,36 @@ F = 1111")
         [packet rest]        (parse-by-type packet rest)]
     [packet rest]))
 
+(defn- flatten-packet [packet]
+  (loop [packets []
+         queue   (util/queue [packet])]
+    (if (empty? queue)
+      packets
+      (let [packet  (peek queue)
+            queue   (pop queue)
+            queue   (reduce conj queue (:sub-packets packet))
+            packets (conj packets (dissoc packet :sub-packets))]
+        (recur packets queue)))))
+
+(defn- version-sum [packet]
+  (->> (flatten-packet packet)
+       (map :version)
+       (reduce +)))
+
+(defn- part1 [input]
+  (let [binary             (line-to-binary input)
+        [packet remainder] (parse-line binary)]
+    (version-sum packet)))
+
 (comment
   (next (line-to-binary "D2FE28") 3)
   (parse-line (line-to-binary "D2FE28"))
   (parse-line (line-to-binary "38006F45291200"))
+  (parse-line (line-to-binary "EE00D40C823060"))
+  (line-to-binary "8A004A801A8002F478")
+  (parse-line (line-to-binary "8A004A801A8002F478"))
+  (version-sum (first (parse-line (line-to-binary "620080001611562C8802118E34"))))
+  (part1 "620080001611562C8802118E34")
+  (part1 day16.input/input)
+  (parse-line (line-to-binary day16.input/input))
 )
