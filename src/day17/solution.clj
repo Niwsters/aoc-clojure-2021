@@ -64,7 +64,7 @@
     a
     b))
 
-(defn- launch-all [probes area]
+(defn- part1-launch-all [probes area]
   (loop [probes (pop (util/queue probes)) result (peek probes)]
     (if (empty? probes)
       result
@@ -75,15 +75,36 @@
           (recur probes (max-probe probe result))
           (recur probes result))))))
 
+(defn- part2-launch-all [probes area]
+  (loop [probes (pop (util/queue probes))
+         result []]
+    (if (empty? probes)
+      result
+      (let [probe  (peek probes)
+            probes (pop probes)
+            probe  (launch probe area)]
+        (if (:hit? probe)
+          (recur probes (conj result (:init-velocity probe)))
+          (recur probes result))))))
+
 (defn- test-probes [min-range max-range]
-  (for [x (range min-range max-range)
+  (for [x (range 1 max-range)
         y (range min-range max-range)]
     (probe x y)))
+
+(defn- part1 [input]
+  (let [area   (area input)
+        probes (test-probes -100 100)]
+    (part1-launch-all probes area)))
+
+(defn- part2 [input]
+  (let [area   (area input)
+        probes (test-probes -100 250)]
+    (part2-launch-all probes area)))
 
 (comment
   (area test-input)
   (probe-in-area? (area test-input) {:x 25 :y -6})
-  (let [area  (area input)
-        probes (test-probes 0 100)]
-    (launch-all probes area))
+  (part1 input)
+  (count (part2 input))
 )
