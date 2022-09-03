@@ -43,3 +43,19 @@
 
 (defn includes? [item coll]
   (not (nil? (some #(= item %) coll))))
+
+(defn- id-counter []
+  (atom (java.util.concurrent.atomic.AtomicLong.)))
+
+(def id-counter* (atom 0))
+
+(defn uniqid []
+  (keyword (str (swap! id-counter* (fn [id] (inc id))))))
+
+(defn reset-uniqid! []
+  (swap! id-counter* (fn [_] 0)))
+
+(comment
+  (reset-uniqid!)
+  (uniqid)
+)
